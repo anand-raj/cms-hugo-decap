@@ -1,4 +1,4 @@
-baseURL = 'https://example.org/'
+baseURL = 'https://anand-raj.github.io/cms-hugo-decap/'
 languageCode = 'en-us'
 title = 'My New Hugo Project'
 
@@ -7,4 +7,4 @@ title = 'My New Hugo Project'
 
   [params.social]
     twitter = "yourtwitterhandle"
-    github  = "yourgithubuser"
+    github  = "anand-raj"
