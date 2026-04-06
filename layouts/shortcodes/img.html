@@ -1,0 +1,37 @@
+{{/*
+  Usage: {{< img src="photo.jpg" alt="A description" >}}
+  Requires the image to be a page resource (in the page's content bundle).
+*/}}
+{{ $src := .Get "src" }}
+{{ $alt := .Get "alt" | default "" }}
+{{ $img := .Page.Resources.GetMatch $src }}
+
+{{ if $img }}
+  {{/* Generate responsive WebP variants at three breakpoints */}}
+  {{ $sm := $img.Resize "480x webp" }}
+  {{ $md := $img.Resize "768x webp" }}
+  {{ $lg := $img.Resize "1200x webp" }}
+
+  <figure>
+    <img
+      src="{{ $md.RelPermalink }}"
+      srcset="{{ $sm.RelPermalink }} 480w,
+              {{ $md.RelPermalink }} 768w,
+              {{ $lg.RelPermalink }} 1200w"
+      sizes="(max-width: 480px) 480px,
+             (max-width: 768px) 768px,
+             1200px"
+      alt="{{ $alt }}"
+      width="{{ $md.Width }}"
+      height="{{ $md.Height }}"
+      loading="lazy"
+      decoding="async">
+    {{ with $alt }}<figcaption>{{ . }}</figcaption>{{ end }}
+  </figure>
+{{ else }}
+  {{/* Fallback: render the src as-is if not a page resource */}}
+  <figure>
+    <img src="{{ $src }}" alt="{{ $alt }}" loading="lazy" decoding="async">
+    {{ with $alt }}<figcaption>{{ . }}</figcaption>{{ end }}
+  </figure>
+{{ end }}

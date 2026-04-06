@@ -1,0 +1,29 @@
+{{ define "main" }}
+  <article class="single">
+    <header class="post-header">
+      <h1>{{ .Title }}</h1>
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "January 2, 2006" }}</time>
+      {{ with .Params.tags }}
+      <ul class="tags">
+        {{ range . }}<li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}">{{ . }}</a></li>{{ end }}
+      </ul>
+      {{ end }}
+    </header>
+    {{ with .Params.thumbnail }}
+      {{ $img := $.Resources.GetMatch . }}
+      {{ if $img }}
+        {{ $md := $img.Resize "768x webp" }}
+        <figure>
+          <img src="{{ $md.RelPermalink }}" alt="{{ $.Title }}"
+               width="{{ $md.Width }}" height="{{ $md.Height }}"
+               loading="lazy" decoding="async">
+        </figure>
+      {{ else }}
+        <figure><img src="{{ . }}" alt="{{ $.Title }}" loading="lazy" decoding="async"></figure>
+      {{ end }}
+    {{ end }}
+    <div class="post-content">
+      {{ .Content }}
+    </div>
+  </article>
+{{ end }}

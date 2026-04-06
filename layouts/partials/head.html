@@ -1,0 +1,16 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if not .IsHome }}{{ .Title }} | {{ end }}{{ site.Title }}</title>
+<meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{ site.Params.description }}{{ end }}">
+
+{{/* Hugo Pipes: SCSS → transpile → minify → fingerprint */}}
+{{ $opts := dict "targetPath" "css/main.css" "enableSourceMap" (not hugo.IsProduction) }}
+{{ $style := resources.Get "scss/main.scss" | toCSS $opts | minify | fingerprint }}
+<link rel="stylesheet"
+      href="{{ $style.RelPermalink }}"
+      integrity="{{ $style.Data.Integrity }}"
+      crossorigin="anonymous">
+
+{{/* Hugo internal SEO templates */}}
+{{ template "_internal/opengraph.html" . }}
+{{ template "_internal/twitter_cards.html" . }}

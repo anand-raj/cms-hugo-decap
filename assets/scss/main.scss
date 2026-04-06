@@ -1,0 +1,109 @@
+// ─── Variables ────────────────────────────────────────────────────────────────
+$font-stack:    system-ui, -apple-system, sans-serif;
+$primary-color: #1a1a2e;
+$accent-color:  #e94560;
+$text-color:    #333;
+$bg-color:      #fff;
+$max-width:     800px;
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: $font-stack;
+  color: $text-color;
+  background-color: $bg-color;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+main {
+  max-width: $max-width;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+.site-header {
+  background: $primary-color;
+  color: #fff;
+  padding: 1rem;
+
+  .site-nav {
+    max-width: $max-width;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .site-title {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .nav-links {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+
+    a {
+      color: #fff;
+      text-decoration: none;
+
+      &:hover,
+      &[aria-current="page"] {
+        color: $accent-color;
+      }
+    }
+  }
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+.site-footer {
+  border-top: 1px solid #eee;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #666;
+
+  .social-links {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+
+    a {
+      color: $accent-color;
+      text-decoration: none;
+
+      &:hover { text-decoration: underline; }
+    }
+  }
+}
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+h1, h2, h3, h4, h5, h6 {
+  color: $primary-color;
+  line-height: 1.2;
+}
+
+a {
+  color: $accent-color;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
