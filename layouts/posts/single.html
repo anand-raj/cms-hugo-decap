@@ -1,0 +1,97 @@
+{{ define "main" }}
+<div class="content-wrap">
+<article class="post">
+
+  {{/* ── Hero Image ─────────────────────────────────────────────────────── */}}
+  {{ with .Params.image }}
+    <figure class="post-hero">
+      {{ partial "post-image.html" (dict "page" $ "src" . "width" "1200" "alt" $.Title "loading" "eager") }}
+      {{ with $.Params.image_caption }}
+        <figcaption>{{ . | markdownify }}</figcaption>
+      {{ end }}
+    </figure>
+  {{ end }}
+
+  {{/* ── Post Header ─────────────────────────────────────────────────────── */}}
+  <header class="post-header">
+    <div class="post-meta">
+      {{ with .Params.categories }}
+        {{ range . }}
+          <a class="post-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>
+        {{ end }}
+      {{ end }}
+    </div>
+
+    <h1 class="post-title">{{ .Title }}</h1>
+
+    {{ with .Description }}
+      <p class="post-description">{{ . }}</p>
+    {{ end }}
+
+    <div class="post-byline">
+      {{ with .Params.author }}<span class="post-author">{{ . }}</span>{{ end }}
+      <time class="post-date" datetime="{{ .Date.Format "2006-01-02" }}">
+        {{ .Date.Format "January 2, 2006" }}
+      </time>
+      {{ if ne .Lastmod .Date }}
+        <span class="post-updated">Updated {{ .Lastmod.Format "January 2, 2006" }}</span>
+      {{ end }}
+      <span class="post-read-time">{{ math.Round (div (countwords .Content) 200.0) }} min read</span>
+    </div>
+
+    {{ with .Params.tags }}
+      <ul class="post-tags">
+        {{ range . }}
+          <li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}">#{{ . }}</a></li>
+        {{ end }}
+      </ul>
+    {{ end }}
+  </header>
+
+  {{/* ── Table of Contents ───────────────────────────────────────────────── */}}
+  {{ if and .Params.toc .TableOfContents }}
+    <nav class="post-toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      {{ .TableOfContents }}
+    </nav>
+  {{ end }}
+
+  {{/* ── Post Body ───────────────────────────────────────────────────────── */}}
+  <div class="post-content">
+    {{ .Content }}
+  </div>
+
+  {{/* ── Post Footer ─────────────────────────────────────────────────────── */}}
+  <footer class="post-footer">
+    {{/* Tag list */}}
+    {{ with .Params.tags }}
+      <div class="post-footer-tags">
+        <strong>Tags:</strong>
+        <ul class="post-tags">
+          {{ range . }}
+            <li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}">#{{ . }}</a></li>
+          {{ end }}
+        </ul>
+      </div>
+    {{ end }}
+
+    {{/* Prev / Next navigation */}}
+    <nav class="post-nav" aria-label="Post navigation">
+      {{ with .PrevInSection }}
+        <a class="post-nav-prev" href="{{ .RelPermalink }}">
+          <span class="post-nav-label">← Previous</span>
+          <span class="post-nav-title">{{ .Title }}</span>
+        </a>
+      {{ end }}
+      {{ with .NextInSection }}
+        <a class="post-nav-next" href="{{ .RelPermalink }}">
+          <span class="post-nav-label">Next →</span>
+          <span class="post-nav-title">{{ .Title }}</span>
+        </a>
+      {{ end }}
+    </nav>
+  </footer>
+
+</article>
+</div>
+{{ end }}

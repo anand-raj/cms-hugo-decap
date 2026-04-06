@@ -1,0 +1,48 @@
+{{/*
+  Renders a post image handling both local page bundle resources and external URLs.
+
+  Params:
+    .page    — the Hugo page context
+    .src     — value of .Params.image (local path or full URL)
+    .width   — resize width for local images (e.g. "1200")
+    .alt     — img alt text
+    .class   — wrapping <a> class
+    .href    — optional link href (omit to render without <a>)
+    .loading — "eager" or "lazy"
+*/}}
+
+{{ $src    := .src }}
+{{ $page   := .page }}
+{{ $width  := .width | default "1200" }}
+{{ $alt    := .alt | default $page.Title }}
+{{ $class  := .class }}
+{{ $href   := .href }}
+{{ $loading := .loading | default "lazy" }}
+
+{{ $isExternal := or (strings.HasPrefix $src "https://") (strings.HasPrefix $src "http://") }}
+
+{{ if $src }}
+  {{ if $href }}<a href="{{ $href }}" class="{{ $class }}">{{ end }}
+
+  {{ if $isExternal }}
+    {{/* External URL (Unsplash, Cloudinary, etc.) — render as-is */}}
+    <img src="{{ $src }}"
+         alt="{{ $alt }}"
+         loading="{{ $loading }}"
+         decoding="async">
+  {{ else }}
+    {{/* Local page bundle resource — process with Hugo Pipes */}}
+    {{ $img := $page.Resources.GetMatch $src }}
+    {{ if $img }}
+      {{ $resized := $img.Resize (printf "%sx webp" $width) }}
+      <img src="{{ $resized.RelPermalink }}"
+           width="{{ $resized.Width }}"
+           height="{{ $resized.Height }}"
+           alt="{{ $alt }}"
+           loading="{{ $loading }}"
+           decoding="async">
+    {{ end }}
+  {{ end }}
+
+  {{ if $href }}</a>{{ end }}
+{{ end }}

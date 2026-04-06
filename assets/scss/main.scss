@@ -5,6 +5,8 @@ $accent-color:  #e94560;
 $text-color:    #333;
 $bg-color:      #fff;
 $max-width:     800px;
+$content-width: 860px;
+$wide-width:    1200px;
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
 *, *::before, *::after {
@@ -22,9 +24,14 @@ body {
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 main {
-  max-width: $max-width;
+  width: 100%;
+}
+
+// Reusable centred content column used by posts, list pages, etc.
+.content-wrap {
+  max-width: $content-width;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1.5rem;
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -92,7 +99,209 @@ main {
   }
 }
 
-// ─── Typography ───────────────────────────────────────────────────────────────
+// ─── Home Page ────────────────────────────────────────────────────────────────
+
+.home { width: 100%; }
+
+.home-hero {
+  width: 100%;
+  background: #f0f4ff;
+  color: $primary-color;
+  padding: 5rem 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid #dde4f5;
+
+  .home-hero-inner { max-width: 860px; margin: 0 auto; }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    color: $primary-color;
+    margin: 0 0 0.75rem;
+  }
+
+  .home-description {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: #5a6a8a;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+.home-body {
+  max-width: $wide-width;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+// ─── Featured Post ────────────────────────────────────────────────────────────
+.featured-post {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  align-items: center;
+  margin-bottom: 4rem;
+  padding-bottom: 4rem;
+  border-bottom: 1px solid #eee;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+
+  &-image-link {
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f0f4ff;
+    aspect-ratio: 16 / 9;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+
+    &:hover img { transform: scale(1.02); }
+  }
+
+  &-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  h2 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    margin: 0;
+    line-height: 1.25;
+
+    a {
+      color: $primary-color;
+      text-decoration: none;
+      &:hover { color: $accent-color; }
+    }
+  }
+
+  &-desc {
+    font-size: 1.05rem;
+    color: #555;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  &-cta {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: $accent-color;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+// ─── Post Grid ────────────────────────────────────────────────────────────────
+.section-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2rem;
+}
+
+.post-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  &-image-link {
+    display: block;
+    overflow: hidden;
+    background: #f0f4ff;
+    aspect-ratio: 16 / 9;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+
+    &:hover img { transform: scale(1.03); }
+  }
+
+  &-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    flex: 1;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    margin: 0;
+    line-height: 1.3;
+
+    a {
+      color: $primary-color;
+      text-decoration: none;
+      &:hover { color: $accent-color; }
+    }
+  }
+
+  &-desc {
+    font-size: 0.875rem;
+    color: #666;
+    line-height: 1.5;
+    margin: 0;
+    flex: 1;
+  }
+}
+
+// ─── Shared card sub-elements ─────────────────────────────────────────────────
+.card-meta {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.card-category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $accent-color;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.card-byline {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.no-posts {
+  color: #888;
+  font-size: 0.95rem;
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: $primary-color;
   line-height: 1.2;
@@ -106,4 +315,214 @@ img {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+// ─── Post Layout ──────────────────────────────────────────────────────────────
+.post {
+  width: 100%;
+}
+
+.post-hero {
+  margin: 0 0 2rem;
+  border-radius: 6px;
+  overflow: hidden;
+
+  img { width: 100%; height: auto; }
+
+  figcaption {
+    font-size: 0.8rem;
+    color: #888;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+}
+
+.post-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.post-meta {
+  margin-bottom: 0.5rem;
+}
+
+.post-category {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $accent-color;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+.post-title {
+  font-size: 2rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.post-description {
+  font-size: 1.1rem;
+  color: #555;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.post-byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #888;
+  align-items: center;
+
+  .post-author { font-weight: 600; color: $text-color; }
+  .post-updated { font-style: italic; }
+}
+
+.post-tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+
+  li a {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+    background: #f0f0f0;
+    color: #555;
+    font-size: 0.8rem;
+    text-decoration: none;
+
+    &:hover { background: $accent-color; color: #fff; }
+  }
+}
+
+// ─── Table of Contents ────────────────────────────────────────────────────────
+.post-toc {
+  background: #f8f8f8;
+  border-left: 3px solid $accent-color;
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+
+  h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #999;
+    margin: 0 0 0.75rem;
+  }
+
+  nav, ul { margin: 0; padding-left: 1.25rem; }
+  li { margin: 0.2rem 0; }
+  a { color: $text-color; text-decoration: none; &:hover { color: $accent-color; } }
+}
+
+// ─── Post Content ─────────────────────────────────────────────────────────────
+.post-content {
+  line-height: 1.8;
+  font-size: 1.05rem;
+
+  h2, h3, h4 { margin-top: 2rem; }
+
+  p { margin: 1rem 0; }
+
+  pre {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+
+  code {
+    background: #f0f0f0;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+
+  pre code { background: none; padding: 0; }
+
+  blockquote {
+    border-left: 3px solid $accent-color;
+    margin: 1.5rem 0;
+    padding: 0.5rem 1rem;
+    color: #555;
+    font-style: italic;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+
+    th, td {
+      border: 1px solid #e0e0e0;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+
+    th { background: #f5f5f5; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+  }
+}
+
+// ─── Post Footer ──────────────────────────────────────────────────────────────
+.post-footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+}
+
+.post-footer-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.post-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    text-decoration: none;
+    color: $text-color;
+    transition: border-color 0.2s;
+
+    &:hover { border-color: $accent-color; }
+  }
+
+  .post-nav-next { text-align: right; }
+
+  .post-nav-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #aaa;
+  }
+
+  .post-nav-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $primary-color;
+  }
 }

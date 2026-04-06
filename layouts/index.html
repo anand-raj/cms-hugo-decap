@@ -1,13 +1,74 @@
 {{ define "main" }}
   <section class="home">
-    <h1>{{ site.Title }}</h1>
-    <p>{{ site.Params.description }}</p>
-    {{ range first 5 (where site.RegularPages "Type" "posts") }}
-    <article class="list-item">
-      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "January 2, 2006" }}</time>
-      {{ with .Summary }}<p>{{ . }}</p>{{ end }}
-    </article>
-    {{ end }}
+
+    {{/* ── Site Hero ───────────────────────────────────────────────────────── */}}
+    <div class="home-hero">
+      <div class="home-hero-inner">
+        <h1>{{ site.Title }}</h1>
+        <p class="home-description">{{ site.Params.description }}</p>
+      </div>
+    </div>
+
+    <div class="home-body">
+      {{ $posts := where site.RegularPages "Section" "posts" }}
+      {{ if $posts }}
+
+        {{/* ── Featured Post (latest) ──────────────────────────────────────── */}}
+        {{ $featured := index $posts 0 }}
+        <div class="featured-post">
+          {{ with $featured.Params.image }}
+            {{ partial "post-image.html" (dict "page" $featured "src" . "width" "1200" "alt" $featured.Title "class" "featured-post-image-link" "href" $featured.RelPermalink "loading" "eager") }}
+          {{ end }}
+          <div class="featured-post-body">
+            {{ with $featured.Params.categories }}
+              <div class="card-meta">
+                {{ range . }}<a class="card-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>{{ end }}
+              </div>
+            {{ end }}
+            <h2><a href="{{ $featured.RelPermalink }}">{{ $featured.Title }}</a></h2>
+            {{ with $featured.Description }}<p class="featured-post-desc">{{ . }}</p>{{ end }}
+            <div class="card-byline">
+              <time datetime="{{ $featured.Date.Format "2006-01-02" }}">{{ $featured.Date.Format "January 2, 2006" }}</time>
+              {{ with $featured.Params.author }} · <span>{{ . }}</span>{{ end }}
+            </div>
+            <a class="featured-post-cta" href="{{ $featured.RelPermalink }}">Read article →</a>
+          </div>
+        </div>
+
+        {{/* ── Post Grid (next 4) ───────────────────────────────────────────── */}}
+        {{ $rest := after 1 $posts }}
+        {{ if $rest }}
+        <div class="post-grid-section">
+          <h2 class="section-label">More Posts</h2>
+          <div class="post-grid">
+            {{ range first 4 $rest }}
+            {{ $card := . }}
+            <article class="post-card">
+              {{ with .Params.image }}
+                {{ partial "post-image.html" (dict "page" $card "src" . "width" "600" "alt" $card.Title "class" "post-card-image-link" "href" $card.RelPermalink "loading" "lazy") }}
+              {{ end }}
+              <div class="post-card-body">
+                {{ with .Params.categories }}
+                  <div class="card-meta">
+                    {{ range . }}<a class="card-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>{{ end }}
+                  </div>
+                {{ end }}
+                <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+                {{ with .Description }}<p class="post-card-desc">{{ . }}</p>{{ end }}
+                <div class="card-byline">
+                  <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "January 2, 2006" }}</time>
+                  {{ with .Params.author }} · <span>{{ . }}</span>{{ end }}
+                </div>
+              </div>
+            </article>
+            {{ end }}
+          </div>
+        </div>
+        {{ end }}
+
+      {{ else }}
+        <p class="no-posts">No posts yet. Create one with <code>hugo new content/posts/my-post.md</code>.</p>
+      {{ end }}
+    </div>
   </section>
 {{ end }}
