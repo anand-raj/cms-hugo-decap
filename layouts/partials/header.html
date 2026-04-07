@@ -7,7 +7,7 @@
         <li><a href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a></li>
         {{ end }}
       {{ end }}
-      <li><a class="nav-membership" href="{{ "/membership/" | relLangURL }}">Become a member</a></li>
+      <li><a class="nav-membership" href="{{ with site.GetPage "/membership" }}{{ .RelPermalink }}{{ end }}">Become a member</a></li>
     </ul>
   </nav>
 </header>
