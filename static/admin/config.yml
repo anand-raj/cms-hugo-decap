@@ -3,6 +3,7 @@ backend:
   repo: anand-raj/cms-hugo-decap
   branch: main
   base_url: https://sveltia-cms-auth.e-anandraj.workers.dev
+  auth_endpoint: /auth
 
 # Store media in the page bundle alongside content
 media_folder: content/posts
