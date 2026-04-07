@@ -123,7 +123,7 @@
     (function () {
       const WORKER   = '{{ $workerUrl | safeJS }}';
       const RZP_KEY  = '{{ $razorpayKey | safeJS }}';
-      const SLUG     = '{{ .File.ContentBaseName | safeJS }}';
+      const SLUG     = '{{ .Slug | safeJS }}';
 
       const btnOpen   = document.getElementById('btn-open-form');
       const btnCancel = document.getElementById('btn-cancel');
