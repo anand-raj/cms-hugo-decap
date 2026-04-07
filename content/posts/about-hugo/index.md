@@ -1,20 +1,19 @@
 ---
-title: "Getting Started with Hugo: A Static Site Generator"
-date: 2026-04-06T18:57:51+05:30
-lastmod: 2026-04-06T18:57:51+05:30
+title: 'Getting Started with Hugo: A Static Site Generator'
+date: 2026-04-06T18:57:00+05:30
+lastmod: 2026-04-06T18:57:00+05:30
 draft: false
-description: "Hugo is one of the fastest static site generators in the world. Learn what it is, why it matters, and how to get your first site running in minutes."
-author: "Admin"
-
-# Taxonomy
-categories: ["Tech"]
-tags: ["hugo", "static sites", "web development", "jamstack"]
-
-# Visuals
-image: "images/hugo.png"
-image_caption: ""
-
-# Features
+description: Hugo is one of the fastest static site generators in the world. Learn what it is, why it matters, and how to get your first site running in minutes.
+author: Admin
+categories:
+  - Tech
+tags:
+  - hugo
+  - static sites
+  - web development
+  - jamstack
+image: images/hugo.png
+image_caption: ''
 toc: true
 comments: true
 ---
@@ -51,7 +50,7 @@ Hugo processes every Markdown file in `content/`, applies the matching template 
 ## Why Hugo Over Other Generators?
 
 | Feature | Hugo | Jekyll | Next.js |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Build speed | Extremely fast | Slow at scale | Moderate |
 | Language | Go (single binary) | Ruby | Node.js |
 | Dependencies | None | Many gems | npm packages |
@@ -65,8 +64,10 @@ Hugo hits a practical sweet spot: it's fast enough for large sites with thousand
 
 In the next post, we'll look at how to structure content sections, use taxonomies like tags and categories, and deploy to Netlify in under five minutes.
 
----
+***
+
 **References:**
+
 - [Hugo Official Documentation](https://gohugo.io/documentation/)
 - [Hugo Quick Start Guide](https://gohugo.io/getting-started/quick-start/)
 - [JAMstack — What, Why & How](https://jamstack.org/what-is-jamstack/)
