@@ -1,7 +1,7 @@
 ---
 title: Getting started with SveltaCMS
-date: 2006-01-02T15:04:05+05:3007:00
-lastmod: 2006-01-02T15:04:05+05:3007:00
+date: 2026-04-07T00:00:00+05:30
+lastmod: 2026-04-07T00:00:00+05:30
 draft: true
 description: ''
 author: Admin
