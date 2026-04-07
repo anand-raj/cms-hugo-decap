@@ -1,0 +1,307 @@
+{{ define "main" }}
+{{ $workerUrl   := site.Params.booksWorkerUrl }}
+{{ $razorpayKey := site.Params.razorpayKeyId }}
+<div class="content-wrap">
+  <article class="book-single">
+
+    {{/* ── Book Hero ─────────────────────────────────────────────────────── */}}
+    <div class="book-hero">
+      {{ with .Params.cover_image }}
+        <div class="book-cover">
+          {{ $img := $.Resources.GetMatch . }}
+          {{ if $img }}
+            {{ if reflect.IsImageResourceProcessable $img }}
+              {{ $resized := $img.Resize "400x webp" }}
+              <img src="{{ $resized.RelPermalink }}"
+                   alt="{{ $.Title }} cover"
+                   width="{{ $resized.Width }}" height="{{ $resized.Height }}"
+                   loading="eager" decoding="async">
+            {{ else }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ $.Title }} cover" loading="eager">
+            {{ end }}
+          {{ else }}
+            <img src="{{ . }}" alt="{{ $.Title }} cover" loading="eager">
+          {{ end }}
+        </div>
+      {{ end }}
+
+      <div class="book-meta">
+        <h1 class="book-title">{{ .Title }}</h1>
+        {{ with .Description }}
+          <p class="book-description">{{ . }}</p>
+        {{ end }}
+        <div class="book-price">
+          ₹{{ .Params.price }}
+        </div>
+        {{ if .Params.in_stock }}
+          <span class="book-stock book-stock--in">In Stock</span>
+        {{ else }}
+          <span class="book-stock book-stock--out">Out of Stock</span>
+        {{ end }}
+      </div>
+    </div>
+
+    {{/* ── Book Body ────────────────────────────────────────────────────── */}}
+    {{ with .Content }}
+    <div class="book-body post-content">
+      {{ . }}
+    </div>
+    {{ end }}
+
+    {{/* ── Buy Section ──────────────────────────────────────────────────── */}}
+    {{ if .Params.in_stock }}
+    <div class="book-buy" id="book-buy">
+      <button class="btn-buy" id="btn-open-form" type="button">
+        Buy this book — ₹{{ .Params.price }}
+      </button>
+
+      <form class="shipping-form" id="shipping-form" hidden>
+        <h2 class="shipping-form-title">Shipping Details</h2>
+
+        {{/* Honeypot */}}
+        <input name="website" type="text" tabindex="-1" autocomplete="off"
+               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="s-name">Full Name</label>
+            <input id="s-name" name="name" type="text" required autocomplete="name" placeholder="Jane Smith">
+          </div>
+          <div class="form-group">
+            <label for="s-email">Email</label>
+            <input id="s-email" name="email" type="email" required autocomplete="email" placeholder="jane@example.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="s-phone">Phone</label>
+          <input id="s-phone" name="phone" type="tel" required autocomplete="tel" placeholder="9876543210">
+        </div>
+
+        <div class="form-group">
+          <label for="s-address">Address</label>
+          <textarea id="s-address" name="address" required rows="2"
+                    placeholder="House / Flat No, Street, Area"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="s-city">City</label>
+            <input id="s-city" name="city" type="text" required placeholder="Mumbai">
+          </div>
+          <div class="form-group">
+            <label for="s-state">State</label>
+            <input id="s-state" name="state" type="text" required placeholder="Maharashtra">
+          </div>
+        </div>
+
+        <div class="form-group form-group--half">
+          <label for="s-pincode">Pincode</label>
+          <input id="s-pincode" name="pincode" type="text" required
+                 pattern="[1-9][0-9]{5}" maxlength="6" placeholder="400001">
+        </div>
+
+        <div class="shipping-form-actions">
+          <button type="submit" class="btn-buy" id="btn-pay">
+            Proceed to Payment — ₹{{ .Params.price }}
+          </button>
+          <button type="button" class="btn-cancel" id="btn-cancel">Cancel</button>
+        </div>
+
+        <p class="form-status" role="status" aria-live="polite"></p>
+      </form>
+
+      <div class="order-success" id="order-success" hidden>
+        <p class="order-success-msg">
+          ✓ Order confirmed! Check your email for details. We will dispatch your copy shortly.
+        </p>
+      </div>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+    (function () {
+      const WORKER   = '{{ $workerUrl | safeJS }}';
+      const RZP_KEY  = '{{ $razorpayKey | safeJS }}';
+      const SLUG     = '{{ .File.ContentBaseName | safeJS }}';
+
+      const btnOpen   = document.getElementById('btn-open-form');
+      const btnCancel = document.getElementById('btn-cancel');
+      const btnPay    = document.getElementById('btn-pay');
+      const form      = document.getElementById('shipping-form');
+      const status    = form.querySelector('.form-status');
+      const buyDiv    = document.getElementById('book-buy');
+      const successEl = document.getElementById('order-success');
+
+      btnOpen.addEventListener('click', function () {
+        btnOpen.hidden = true;
+        form.hidden    = false;
+        form.querySelector('[name="name"]').focus();
+      });
+
+      btnCancel.addEventListener('click', function () {
+        form.hidden    = false;  // keep form data
+        form.hidden    = true;
+        btnOpen.hidden = false;
+        status.textContent = '';
+        status.className = 'form-status';
+      });
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        btnPay.disabled    = true;
+        btnPay.textContent = 'Creating order…';
+        status.textContent = '';
+        status.className   = 'form-status';
+
+        const shipping = {
+          name:     form.querySelector('[name="name"]').value.trim(),
+          email:    form.querySelector('[name="email"]').value.trim(),
+          phone:    form.querySelector('[name="phone"]').value.trim(),
+          address:  form.querySelector('[name="address"]').value.trim(),
+          city:     form.querySelector('[name="city"]').value.trim(),
+          state:    form.querySelector('[name="state"]').value.trim(),
+          pincode:  form.querySelector('[name="pincode"]').value.trim(),
+          website:  form.querySelector('[name="website"]').value,
+        };
+
+        let orderData;
+        try {
+          const res = await fetch(WORKER + '/books/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: SLUG, shipping }),
+          });
+          orderData = await res.json();
+          if (!res.ok) throw new Error(orderData.error || 'Could not create order.');
+        } catch (err) {
+          status.textContent = err.message;
+          status.classList.add('form-status--error');
+          btnPay.disabled    = false;
+          btnPay.textContent = 'Proceed to Payment — ₹{{ .Params.price }}';
+          return;
+        }
+
+        // Mock mode — show a simulate button instead of opening Razorpay
+        if (orderData.mock) {
+          btnPay.hidden = true;
+          const mockBtn = document.createElement('button');
+          mockBtn.type = 'button';
+          mockBtn.className = 'btn-buy';
+          mockBtn.textContent = '⚡ Simulate Payment (Test Mode)';
+          btnPay.parentNode.insertBefore(mockBtn, btnPay);
+
+          mockBtn.addEventListener('click', async function () {
+            mockBtn.disabled    = true;
+            mockBtn.textContent = 'Processing…';
+            try {
+              const vRes = await fetch(WORKER + '/books/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_payment_id: 'mock_pay_' + Date.now(),
+                  razorpay_order_id:   orderData.order_id,
+                  razorpay_signature:  'mock_sig',
+                }),
+              });
+              const vData = await vRes.json();
+              if (!vRes.ok) throw new Error(vData.error || 'Verification failed.');
+              form.hidden      = true;
+              successEl.hidden = false;
+              btnOpen.hidden   = true;
+            } catch (err) {
+              status.textContent = err.message;
+              status.classList.add('form-status--error');
+              mockBtn.disabled    = false;
+              mockBtn.textContent = '⚡ Simulate Payment (Test Mode)';
+            }
+          });
+          return;
+        }
+
+        // Mock mode — skip Razorpay modal, simulate payment directly
+        if (orderData.mock) {
+          btnPay.textContent = 'Simulating payment…';
+          const mockPaymentId = 'mock_pay_' + Date.now();
+          try {
+            const vRes = await fetch(WORKER + '/books/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: mockPaymentId,
+                razorpay_order_id:   orderData.order_id,
+                razorpay_signature:  'mock_signature',
+              }),
+            });
+            const vData = await vRes.json();
+            if (!vRes.ok) throw new Error(vData.error || 'Mock verification failed.');
+            form.hidden       = true;
+            successEl.hidden  = false;
+            btnOpen.hidden    = true;
+          } catch (err) {
+            status.textContent = 'Mock error: ' + err.message;
+            status.classList.add('form-status--error');
+            btnPay.disabled    = false;
+            btnPay.textContent = 'Proceed to Payment — ₹{{ .Params.price }}';
+          }
+          return;
+        }
+
+        const rzp = new Razorpay({
+          key:      orderData.key_id || RZP_KEY,
+          amount:   orderData.amount,
+          currency: orderData.currency,
+          order_id: orderData.order_id,
+          name:     '{{ site.Title | safeJS }}',
+          description: '{{ .Title | safeJS }}',
+          prefill: {
+            name:  shipping.name,
+            email: shipping.email,
+            contact: shipping.phone,
+          },
+          theme: { color: '#e94560' },
+          handler: async function (response) {
+            btnPay.textContent = 'Verifying payment…';
+            try {
+              const vRes = await fetch(WORKER + '/books/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id:   response.razorpay_order_id,
+                  razorpay_signature:  response.razorpay_signature,
+                }),
+              });
+              const vData = await vRes.json();
+              if (!vRes.ok) throw new Error(vData.error || 'Verification failed.');
+
+              form.hidden       = true;
+              successEl.hidden  = false;
+              btnOpen.hidden    = true;
+            } catch (err) {
+              status.textContent = 'Payment received but verification failed: ' + err.message +
+                                   '. Please email us with your payment ID: ' + response.razorpay_payment_id;
+              status.classList.add('form-status--error');
+              btnPay.disabled    = false;
+              btnPay.textContent = 'Proceed to Payment';
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              btnPay.disabled    = false;
+              btnPay.textContent = 'Proceed to Payment — ₹{{ .Params.price }}';
+              status.textContent = 'Payment cancelled.';
+              status.classList.add('form-status--error');
+            },
+          },
+        });
+
+        rzp.open();
+      });
+    })();
+    </script>
+    {{ end }}
+
+  </article>
+</div>
+{{ end }}

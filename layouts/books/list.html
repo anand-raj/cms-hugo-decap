@@ -1,0 +1,52 @@
+{{ define "main" }}
+<div class="content-wrap">
+  <h1 class="section-label">Books</h1>
+  {{ with .Description }}<p class="books-intro">{{ . }}</p>{{ end }}
+
+  {{ $books := where site.RegularPages "Section" "books" }}
+  {{ if $books }}
+    <div class="books-grid">
+      {{ range $books }}
+        <article class="book-card">
+          {{ with .Params.cover_image }}
+            <a class="book-card-cover-link" href="{{ $.RelPermalink }}">
+              {{ $img := $.Resources.GetMatch . }}
+              {{ if $img }}
+                {{ if reflect.IsImageResourceProcessable $img }}
+                  {{ $resized := $img.Resize "300x webp" }}
+                  <img src="{{ $resized.RelPermalink }}"
+                       alt="{{ $.Title }} cover"
+                       width="{{ $resized.Width }}" height="{{ $resized.Height }}"
+                       loading="lazy" decoding="async">
+                {{ else }}
+                  <img src="{{ $img.RelPermalink }}" alt="{{ $.Title }} cover" loading="lazy">
+                {{ end }}
+              {{ else }}
+                <img src="{{ . }}" alt="{{ $.Title }} cover" loading="lazy">
+              {{ end }}
+            </a>
+          {{ end }}
+          <div class="book-card-body">
+            <h2 class="book-card-title">
+              <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+            </h2>
+            {{ with .Description }}
+              <p class="book-card-desc">{{ . | truncate 120 }}</p>
+            {{ end }}
+            <div class="book-card-footer">
+              <span class="book-card-price">₹{{ .Params.price }}</span>
+              {{ if .Params.in_stock }}
+                <a class="btn-buy btn-buy--small" href="{{ .RelPermalink }}">Buy</a>
+              {{ else }}
+                <span class="book-stock book-stock--out">Out of Stock</span>
+              {{ end }}
+            </div>
+          </div>
+        </article>
+      {{ end }}
+    </div>
+  {{ else }}
+    <p>No books available yet.</p>
+  {{ end }}
+</div>
+{{ end }}

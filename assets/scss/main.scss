@@ -605,3 +605,228 @@ img {
     &--error   { color: #dc2626; }
   }
 }
+
+// ── Books ─────────────────────────────────────────────────────────────────
+
+// List page grid
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.book-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s;
+
+  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+
+  &-cover-link {
+    display: block;
+    aspect-ratio: 2/3;
+    overflow: hidden;
+    background: #f3f4f6;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  &-title {
+    font-size: 1rem;
+    margin: 0 0 0.5rem;
+    a { color: $primary-color; text-decoration: none;
+        &:hover { color: $accent-color; } }
+  }
+
+  &-desc {
+    font-size: 0.85rem;
+    color: #666;
+    flex: 1;
+    margin: 0 0 1rem;
+    line-height: 1.5;
+  }
+
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &-price {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: $primary-color;
+  }
+}
+
+// Single book page
+.book-single {
+  padding: 2rem 0;
+}
+
+.book-hero {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+  margin-bottom: 2.5rem;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.book-cover {
+  img {
+    width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.15);
+  }
+}
+
+.book-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.book-title {
+  font-size: 2rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.book-description {
+  font-size: 1.05rem;
+  color: #444;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.book-price {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: $primary-color;
+}
+
+.book-stock {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+
+  &--in  { background: #dcfce7; color: #16a34a; }
+  &--out { background: #fee2e2; color: #dc2626; }
+}
+
+.book-body {
+  margin-bottom: 3rem;
+}
+
+// Buy button (shared between list + single)
+.btn-buy {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background: $accent-color;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+
+  &:hover:not(:disabled) { opacity: 0.88; color: #fff; }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  &--small {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+  }
+}
+
+.btn-cancel {
+  background: none;
+  border: 1.5px solid #d1d5db;
+  border-radius: 5px;
+  padding: 0.62rem 1.25rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #555;
+  cursor: pointer;
+  transition: border-color 0.15s;
+
+  &:hover { border-color: $accent-color; }
+}
+
+// Shipping form
+.shipping-form {
+  max-width: 560px;
+  margin-top: 1.5rem;
+
+  &-title {
+    font-size: 1.2rem;
+    margin: 0 0 1.25rem;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+
+    &:focus { outline: none; border-color: $accent-color; }
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    @media (max-width: 500px) { grid-template-columns: 1fr; }
+  }
+
+  .form-group--half { max-width: 180px; }
+
+  &-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+.order-success-msg {
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
