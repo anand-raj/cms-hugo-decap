@@ -25,7 +25,7 @@
 
 function corsHeaders(env) {
   return {
-    'Access-Control-Allow-Origin': env.SITE_URL,
+    'Access-Control-Allow-Origin': env.SITE_URL || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
