@@ -4,6 +4,8 @@ title = 'My New Hugo Project'
 
 [params]
   description = "A production-ready Hugo site built with best practices."
+  # Set this to your membership worker URL after deploying it to Cloudflare
+  membershipWorkerUrl = "https://cms-membership.e-anandraj.workers.dev"
 
   [params.social]
     twitter = "yourtwitterhandle"
