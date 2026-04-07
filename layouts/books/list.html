@@ -1,53 +1,50 @@
 {{ define "main" }}
+{{ $workerUrl := site.Params.booksWorkerUrl }}
 <div class="content-wrap">
   <h1 class="section-label">Books</h1>
   {{ with .Description }}<p class="books-intro">{{ . }}</p>{{ end }}
 
-  {{ $books := where site.RegularPages "Section" "books" }}
-  {{ if $books }}
-    <div class="books-grid">
-      {{ range $books }}
-        {{ $book := . }}
-        <article class="book-card">
-          {{ with .Params.cover_image }}
-            <a class="book-card-cover-link" href="{{ $book.RelPermalink }}">
-              {{ $img := $book.Resources.GetMatch . }}
-              {{ if $img }}
-                {{ if reflect.IsImageResourceProcessable $img }}
-                  {{ $resized := $img.Resize "300x webp" }}
-                  <img src="{{ $resized.RelPermalink }}"
-                       alt="{{ $book.Title }} cover"
-                       width="{{ $resized.Width }}" height="{{ $resized.Height }}"
-                       loading="lazy" decoding="async">
-                {{ else }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ $book.Title }} cover" loading="lazy">
-                {{ end }}
-              {{ else }}
-                <img src="{{ . }}" alt="{{ $book.Title }} cover" loading="lazy">
-              {{ end }}
-            </a>
-          {{ end }}
-          <div class="book-card-body">
-            <h2 class="book-card-title">
-              <a href="{{ .RelPermalink }}">{{ .Title }}</a>
-            </h2>
-            {{ with .Description }}
-              <p class="book-card-desc">{{ . | truncate 120 }}</p>
-            {{ end }}
-            <div class="book-card-footer">
-              <span class="book-card-price">₹{{ .Params.price }}</span>
-              {{ if .Params.in_stock }}
-                <a class="btn-buy btn-buy--small" href="{{ .RelPermalink }}">Buy</a>
-              {{ else }}
-                <span class="book-stock book-stock--out">Out of Stock</span>
-              {{ end }}
-            </div>
-          </div>
-        </article>
-      {{ end }}
-    </div>
-  {{ else }}
-    <p>No books available yet.</p>
-  {{ end }}
+  <div class="books-grid" id="books-grid">
+    <p id="books-loading">Loading books…</p>
+  </div>
 </div>
+
+<script>
+(function () {
+  const WORKER   = '{{ $workerUrl | safeJS }}';
+  const BASE_URL = '{{ site.Home.RelPermalink | safeJS }}';
+  const grid     = document.getElementById('books-grid');
+
+  fetch(WORKER + '/books')
+    .then(function (r) { return r.json(); })
+    .then(function (books) {
+      if (!books.length) {
+        grid.innerHTML = '<p>No books available yet.</p>';
+        return;
+      }
+      grid.innerHTML = books.map(function (b) {
+        const priceINR = '₹' + (b.price_paise / 100).toLocaleString('en-IN');
+        const stockBadge = b.in_stock
+          ? '<span class="book-stock book-stock--in">In Stock</span>'
+          : '<span class="book-stock book-stock--out">Out of Stock</span>';
+        const buyBtn = b.in_stock
+          ? '<a class="btn-buy btn-buy--small" href="' + BASE_URL + 'books/' + b.slug + '/">Buy</a>'
+          : '';
+        return '<article class="book-card">' +
+          '<div class="book-card-body">' +
+            '<h2 class="book-card-title"><a href="' + BASE_URL + 'books/' + b.slug + '/">' + b.title + '</a></h2>' +
+            '<div class="book-card-footer">' +
+              '<span class="book-card-price">' + priceINR + '</span>' +
+              stockBadge +
+              buyBtn +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      }).join('');
+    })
+    .catch(function () {
+      grid.innerHTML = '<p>Could not load books. Please try again later.</p>';
+    });
+})();
+</script>
 {{ end }}

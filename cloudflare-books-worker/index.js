@@ -26,7 +26,7 @@
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.SITE_URL,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
@@ -85,6 +85,19 @@ function validateShipping(s) {
   if (!s.state || s.state.trim().length < 2)          errors.push('State is required.');
   if (!s.pincode || !/^[1-9][0-9]{5}$/.test(s.pincode.trim())) errors.push('Valid 6-digit pincode is required.');
   return errors;
+}
+
+// ---------------------------------------------------------------------------
+// GET /books
+// ---------------------------------------------------------------------------
+
+async function handleListBooks(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT slug, title, price_paise, in_stock FROM books ORDER BY id DESC`
+  ).all();
+  return new Response(JSON.stringify(results), {
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +335,7 @@ export default {
     }
 
     switch (`${request.method} ${url.pathname}`) {
+      case 'GET /books':            return handleListBooks(env);
       case 'POST /books/create-order': return handleCreateOrder(request, env);
       case 'POST /books/verify':       return handleVerify(request, env);
       default: return new Response('Not found', { status: 404 });

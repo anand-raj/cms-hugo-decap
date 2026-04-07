@@ -7,7 +7,7 @@ title = 'My New Hugo Project'
   # Set this to your membership worker URL after deploying it to Cloudflare
   membershipWorkerUrl = "https://cms-membership.e-anandraj.workers.dev"
   # Set after deploying cloudflare-books-worker
-  booksWorkerUrl      = "https://cms-books.REPLACE_YOUR_SUBDOMAIN.workers.dev"
+  booksWorkerUrl      = "https://cms-books.e-anandraj.workers.dev"
   # Razorpay publishable key (safe to be public) — use rzp_test_xxx for testing
   razorpayKeyId       = "REPLACE_WITH_RAZORPAY_KEY_ID"
 
