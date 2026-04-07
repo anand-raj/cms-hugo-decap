@@ -71,6 +71,17 @@ main {
         color: $accent-color;
       }
     }
+
+    .nav-membership {
+      background: $accent-color;
+      color: #fff !important;
+      padding: 0.35rem 0.9rem;
+      border-radius: 4px;
+      font-weight: 600;
+      transition: opacity 0.15s;
+
+      &:hover { opacity: 0.85; color: #fff !important; }
+    }
   }
 }
 

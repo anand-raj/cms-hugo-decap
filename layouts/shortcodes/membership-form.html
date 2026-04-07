@@ -52,7 +52,7 @@
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        form.reset();
+        form.querySelectorAll('.form-group').forEach(function(g) { g.style.display = 'none'; });
         btn.style.display  = 'none';
         status.textContent = 'Request received! We will review it and get back to you shortly.';
         status.classList.add('form-status--success');

@@ -1,12 +1,13 @@
 <header class="site-header">
   <nav class="site-nav">
     <a class="site-title" href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
-    {{ with site.Menus.main }}
     <ul class="nav-links">
-      {{ range . }}
-      <li><a href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a></li>
+      {{ with site.Menus.main }}
+        {{ range . }}
+        <li><a href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a></li>
+        {{ end }}
       {{ end }}
+      <li><a class="nav-membership" href="{{ "/membership/" | relLangURL }}">Become a member</a></li>
     </ul>
-    {{ end }}
   </nav>
 </header>
