@@ -34,17 +34,17 @@
     {{/* Local page bundle resource — process with Hugo Pipes */}}
     {{ $img := $page.Resources.GetMatch $src }}
     {{ if $img }}
-      {{/* SVGs and other non-raster formats cannot be resized — render as-is */}}
-      {{ if $img.MediaType.SubType | eq "svg+xml" }}
-        <img src="{{ $img.RelPermalink }}"
-             alt="{{ $alt }}"
-             loading="{{ $loading }}"
-             decoding="async">
-      {{ else }}
+      {{/* Only resize raster images; SVGs and other formats render as-is */}}
+      {{ if reflect.IsImageResourceProcessable $img }}
         {{ $resized := $img.Resize (printf "%sx webp" $width) }}
         <img src="{{ $resized.RelPermalink }}"
              width="{{ $resized.Width }}"
              height="{{ $resized.Height }}"
+             alt="{{ $alt }}"
+             loading="{{ $loading }}"
+             decoding="async">
+      {{ else }}
+        <img src="{{ $img.RelPermalink }}"
              alt="{{ $alt }}"
              loading="{{ $loading }}"
              decoding="async">
