@@ -7,22 +7,23 @@
   {{ if $books }}
     <div class="books-grid">
       {{ range $books }}
+        {{ $book := . }}
         <article class="book-card">
           {{ with .Params.cover_image }}
-            <a class="book-card-cover-link" href="{{ $.RelPermalink }}">
-              {{ $img := $.Resources.GetMatch . }}
+            <a class="book-card-cover-link" href="{{ $book.RelPermalink }}">
+              {{ $img := $book.Resources.GetMatch . }}
               {{ if $img }}
                 {{ if reflect.IsImageResourceProcessable $img }}
                   {{ $resized := $img.Resize "300x webp" }}
                   <img src="{{ $resized.RelPermalink }}"
-                       alt="{{ $.Title }} cover"
+                       alt="{{ $book.Title }} cover"
                        width="{{ $resized.Width }}" height="{{ $resized.Height }}"
                        loading="lazy" decoding="async">
                 {{ else }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ $.Title }} cover" loading="lazy">
+                  <img src="{{ $img.RelPermalink }}" alt="{{ $book.Title }} cover" loading="lazy">
                 {{ end }}
               {{ else }}
-                <img src="{{ . }}" alt="{{ $.Title }} cover" loading="lazy">
+                <img src="{{ . }}" alt="{{ $book.Title }} cover" loading="lazy">
               {{ end }}
             </a>
           {{ end }}
