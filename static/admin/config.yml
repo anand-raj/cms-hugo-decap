@@ -1,0 +1,86 @@
+backend:
+  name: github
+  repo: anand-raj/cms-hugo-decap
+  branch: main
+  base_url: https://sveltia-cms-auth.e-anandraj.workers.dev
+
+# Store media in the page bundle alongside content
+media_folder: content/posts
+public_folder: /posts
+
+site_url: https://anand-raj.github.io/cms-hugo-decap/
+
+collections:
+  - name: posts
+    label: Posts
+    folder: content/posts
+    create: true
+    path: "{{slug}}/index"
+    media_folder: images
+    public_folder: images
+    preview_path: posts/{{slug}}/
+    fields:
+      - label: Title
+        name: title
+        widget: string
+
+      - label: Publish Date
+        name: date
+        widget: datetime
+        format: "2006-01-02T15:04:05Z07:00"
+
+      - label: Last Modified
+        name: lastmod
+        widget: datetime
+        format: "2006-01-02T15:04:05Z07:00"
+
+      - label: Draft
+        name: draft
+        widget: boolean
+        default: true
+
+      - label: Description
+        name: description
+        widget: text
+        required: false
+
+      - label: Author
+        name: author
+        widget: string
+        default: Admin
+
+      - label: Categories
+        name: categories
+        widget: list
+        default: ["Tech"]
+
+      - label: Tags
+        name: tags
+        widget: list
+        required: false
+
+      - label: Hero Image
+        name: image
+        widget: image
+        required: false
+        hint: "Use an Unsplash URL (https://images.unsplash.com/photo-ID?w=1200&fm=webp&q=80) or upload a file to the page bundle."
+
+      - label: Image Caption
+        name: image_caption
+        widget: string
+        required: false
+        hint: "e.g. Photo by [Name](https://unsplash.com/@handle) on [Unsplash](https://unsplash.com)"
+
+      - label: Table of Contents
+        name: toc
+        widget: boolean
+        default: true
+
+      - label: Comments
+        name: comments
+        widget: boolean
+        default: true
+
+      - label: Body
+        name: body
+        widget: markdown
