@@ -96,7 +96,10 @@ async function handleListBooks(env) {
     `SELECT slug, title, price_paise, in_stock FROM books ORDER BY id DESC`
   ).all();
   return new Response(JSON.stringify(results), {
-    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',   // public catalog — no secret data
+    },
   });
 }
 
