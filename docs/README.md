@@ -39,6 +39,7 @@ Editor → Sveltia CMS (/admin/)
 | [03-cloudflare-worker.md](03-cloudflare-worker.md) | Setting up the OAuth proxy on Cloudflare Workers |
 | [04-sveltia-cms.md](04-sveltia-cms.md) | Configuring Sveltia CMS |
 | [05-editorial-workflow.md](05-editorial-workflow.md) | Day-to-day editorial workflow |
+| [06-user-access.md](06-user-access.md) | Granting and revoking CMS access |
 
 ## Live URLs
 
