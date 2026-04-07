@@ -20,9 +20,9 @@
             {{ partial "post-image.html" (dict "page" $featured "src" . "width" "1200" "alt" $featured.Title "class" "featured-post-image-link" "href" $featured.RelPermalink "loading" "eager") }}
           {{ end }}
           <div class="featured-post-body">
-            {{ with $featured.Params.categories }}
+            {{ with $featured.GetTerms "categories" }}
               <div class="card-meta">
-                {{ range . }}<a class="card-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>{{ end }}
+                {{ range . }}<a class="card-category" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}
               </div>
             {{ end }}
             <h2><a href="{{ $featured.RelPermalink }}">{{ $featured.Title }}</a></h2>
@@ -48,9 +48,9 @@
                 {{ partial "post-image.html" (dict "page" $card "src" . "width" "600" "alt" $card.Title "class" "post-card-image-link" "href" $card.RelPermalink "loading" "lazy") }}
               {{ end }}
               <div class="post-card-body">
-                {{ with .Params.categories }}
+                {{ with $card.GetTerms "categories" }}
                   <div class="card-meta">
-                    {{ range . }}<a class="card-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>{{ end }}
+                    {{ range . }}<a class="card-category" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}
                   </div>
                 {{ end }}
                 <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>

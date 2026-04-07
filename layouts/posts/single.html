@@ -15,10 +15,8 @@
   {{/* ── Post Header ─────────────────────────────────────────────────────── */}}
   <header class="post-header">
     <div class="post-meta">
-      {{ with .Params.categories }}
-        {{ range . }}
-          <a class="post-category" href="{{ "/categories/" | relURL }}{{ . | urlize }}">{{ . }}</a>
-        {{ end }}
+      {{ range .GetTerms "categories" }}
+        <a class="post-category" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>
       {{ end }}
     </div>
 
@@ -39,10 +37,10 @@
       <span class="post-read-time">{{ math.Round (div (countwords .Content) 200.0) }} min read</span>
     </div>
 
-    {{ with .Params.tags }}
+    {{ with .GetTerms "tags" }}
       <ul class="post-tags">
         {{ range . }}
-          <li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}">#{{ . }}</a></li>
+          <li><a href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a></li>
         {{ end }}
       </ul>
     {{ end }}
@@ -64,12 +62,12 @@
   {{/* ── Post Footer ─────────────────────────────────────────────────────── */}}
   <footer class="post-footer">
     {{/* Tag list */}}
-    {{ with .Params.tags }}
+    {{ with .GetTerms "tags" }}
       <div class="post-footer-tags">
         <strong>Tags:</strong>
         <ul class="post-tags">
           {{ range . }}
-            <li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}">#{{ . }}</a></li>
+            <li><a href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a></li>
           {{ end }}
         </ul>
       </div>
