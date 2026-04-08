@@ -25,7 +25,7 @@
 
 function corsHeaders(env) {
   return {
-    'Access-Control-Allow-Origin': env.SITE_URL || '*',
+    'Access-Control-Allow-Origin': env.SITE_URL,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
@@ -45,17 +45,29 @@ function jsonErr(message, status, env) {
 }
 
 async function sendEmail(env, { to, subject, html }) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: env.FROM_EMAIL, to, subject, html }),
-  });
-  if (!res.ok) {
-    console.error(`Resend error ${res.status}:`, await res.text());
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: env.FROM_EMAIL, to, subject, html }),
+    });
+    if (res.ok) return;
+    const errText = await res.text();
+    console.error(`Resend error ${res.status} (attempt ${attempt}):`, errText);
+    if (attempt < 2) await new Promise(r => setTimeout(r, 500));
   }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /** Verify Razorpay payment signature using HMAC-SHA256 */
@@ -99,6 +111,7 @@ async function handleListBooks(env) {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',   // public catalog — no secret data
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
     },
   });
 }
@@ -108,6 +121,9 @@ async function handleListBooks(env) {
 // ---------------------------------------------------------------------------
 
 async function handleCreateOrder(request, env) {
+  const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+  if (contentLength > 8192) return jsonErr('Request body too large.', 413, env);
+
   let body;
   try { body = await request.json(); }
   catch { return jsonErr('Invalid request body.', 400, env); }
@@ -200,7 +216,7 @@ async function handleCreateOrder(request, env) {
     ).run();
   } catch (e) {
     console.error('D1 insert error:', e);
-    // Don't block payment if DB write fails — log and continue
+    return jsonErr('Could not save order. Please try again.', 503, env);
   }
 
   return jsonOk({
@@ -217,6 +233,9 @@ async function handleCreateOrder(request, env) {
 // ---------------------------------------------------------------------------
 
 async function handleVerify(request, env) {
+  const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+  if (contentLength > 4096) return jsonErr('Request body too large.', 413, env);
+
   let body;
   try { body = await request.json(); }
   catch { return jsonErr('Invalid request body.', 400, env); }
@@ -243,7 +262,9 @@ async function handleVerify(request, env) {
 
   // Fetch order from D1
   const order = await env.DB.prepare(
-    `SELECT * FROM orders WHERE razorpay_order_id = ?`
+    `SELECT razorpay_order_id, book_title, buyer_name, buyer_email, buyer_phone,
+            shipping_address, amount_paise, status
+     FROM orders WHERE razorpay_order_id = ?`
   ).bind(razorpay_order_id).first();
 
   if (!order) {
@@ -251,6 +272,27 @@ async function handleVerify(request, env) {
   }
 
   if (order.status === 'paid') {
+    // Re-send buyer confirmation in case the first delivery failed
+    const addrPaid = (() => { try { return JSON.parse(order.shipping_address); } catch { return {}; } })();
+    const addrTextPaid = [addrPaid.address, addrPaid.city, addrPaid.state, addrPaid.pincode].filter(Boolean).join(', ');
+    const amountPaid = (order.amount_paise / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+    await sendEmail(env, {
+      to: order.buyer_email,
+      subject: `Your order confirmation — ${escapeHtml(order.book_title)}`,
+      html: `
+        <p>Hi <strong>${escapeHtml(order.buyer_name)}</strong>,</p>
+        <p>This is a confirmation of your order (already processed).</p>
+        <table style="border-collapse:collapse;font-size:0.95rem">
+          <tr><td style="padding:4px 12px 4px 0;color:#666">Book</td>
+              <td><strong>${escapeHtml(order.book_title)}</strong></td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#666">Amount</td>
+              <td>${amountPaid}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#666">Ship to</td>
+              <td>${escapeHtml(addrTextPaid)}</td></tr>
+        </table>
+        <p>If you have any questions, please contact us.</p>
+      `,
+    });
     return jsonOk({ ok: true, already_paid: true }, env);
   }
 
@@ -277,19 +319,19 @@ async function handleVerify(request, env) {
   // Confirmation email to buyer
   await sendEmail(env, {
     to: order.buyer_email,
-    subject: `Order confirmed — ${order.book_title}`,
+    subject: `Order confirmed — ${escapeHtml(order.book_title)}`,
     html: `
-      <p>Hi <strong>${order.buyer_name}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(order.buyer_name)}</strong>,</p>
       <p>Thank you for your order! Here are your details:</p>
       <table style="border-collapse:collapse;font-size:0.95rem">
         <tr><td style="padding:4px 12px 4px 0;color:#666">Book</td>
-            <td><strong>${order.book_title}</strong></td></tr>
+            <td><strong>${escapeHtml(order.book_title)}</strong></td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#666">Amount</td>
             <td>${amountINR}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#666">Ship to</td>
-            <td>${addressText}</td></tr>
+            <td>${escapeHtml(addressText)}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#666">Payment ID</td>
-            <td style="font-family:monospace;font-size:0.85rem">${razorpay_payment_id}</td></tr>
+            <td style="font-family:monospace;font-size:0.85rem">${escapeHtml(razorpay_payment_id)}</td></tr>
       </table>
       <p>We will dispatch your copy and send you a tracking update shortly.</p>
     `,
@@ -298,26 +340,26 @@ async function handleVerify(request, env) {
   // Admin notification
   await sendEmail(env, {
     to: env.ADMIN_EMAIL,
-    subject: `New order: ${order.book_title} from ${order.buyer_name}`,
+    subject: `New order: ${escapeHtml(order.book_title)} from ${escapeHtml(order.buyer_name)}`,
     html: `
       <p><strong>New paid order received.</strong></p>
       <table style="border-collapse:collapse;font-size:0.95rem">
         <tr><td style="padding:4px 16px 4px 0;color:#666">Book</td>
-            <td>${order.book_title}</td></tr>
+            <td>${escapeHtml(order.book_title)}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Amount</td>
             <td>${amountINR}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Name</td>
-            <td>${order.buyer_name}</td></tr>
+            <td>${escapeHtml(order.buyer_name)}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Email</td>
-            <td><a href="mailto:${order.buyer_email}">${order.buyer_email}</a></td></tr>
+            <td><a href="mailto:${escapeHtml(order.buyer_email)}">${escapeHtml(order.buyer_email)}</a></td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Phone</td>
-            <td>${order.buyer_phone || '—'}</td></tr>
+            <td>${escapeHtml(order.buyer_phone || '—')}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Ship to</td>
-            <td>${addressText}</td></tr>
+            <td>${escapeHtml(addressText)}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Payment ID</td>
-            <td style="font-family:monospace;font-size:0.85rem">${razorpay_payment_id}</td></tr>
+            <td style="font-family:monospace;font-size:0.85rem">${escapeHtml(razorpay_payment_id)}</td></tr>
         <tr><td style="padding:4px 16px 4px 0;color:#666">Order ID</td>
-            <td style="font-family:monospace;font-size:0.85rem">${razorpay_order_id}</td></tr>
+            <td style="font-family:monospace;font-size:0.85rem">${escapeHtml(razorpay_order_id)}</td></tr>
       </table>
     `,
   });

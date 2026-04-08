@@ -40,6 +40,15 @@ async function safeEqual(a, b) {
   return diff === 0;
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.SITE_URL,
@@ -90,16 +99,19 @@ function htmlPage(title, body) {
 }
 
 async function sendEmail(env, { to, subject, html }) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: env.FROM_EMAIL, to, subject, html }),
-  });
-  if (!res.ok) {
-    console.error(`Resend error ${res.status}:`, await res.text());
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: env.FROM_EMAIL, to, subject, html }),
+    });
+    if (res.ok) return;
+    const errText = await res.text();
+    console.error(`Resend error ${res.status} (attempt ${attempt}):`, errText);
+    if (attempt < 2) await new Promise(r => setTimeout(r, 500));
   }
 }
 
@@ -108,6 +120,9 @@ async function sendEmail(env, { to, subject, html }) {
 // ---------------------------------------------------------------------------
 
 async function handleSubscribe(request, env) {
+  const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+  if (contentLength > 4096) return jsonErr('Request body too large.', 413, env);
+
   let body;
   try {
     body = await request.json();
@@ -148,9 +163,9 @@ async function handleSubscribe(request, env) {
 
   await sendEmail(env, {
     to: env.ADMIN_EMAIL,
-    subject: `New membership request from ${name}`,
+    subject: `New membership request from ${escapeHtml(name)}`,
     html: `
-      <p><strong>${name}</strong> (<a href="mailto:${email}">${email}</a>) has requested membership.</p>
+      <p><strong>${escapeHtml(name)}</strong> (<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>) has requested membership.</p>
       <p style="margin-top:1.5rem">
         <a href="${approveUrl}"
            style="background:#16a34a;color:#fff;padding:10px 22px;border-radius:5px;
@@ -175,12 +190,16 @@ async function handleApprove(url, env) {
   if (!token) return htmlPage('Invalid Link', '<p>This approval link is not valid.</p>');
 
   const row = await env.DB.prepare(
-    `SELECT id, name, email, status FROM members WHERE token = ?`
+    `SELECT id, name, email, status, created_at FROM members WHERE token = ?`
   ).bind(token).first();
 
   if (!row) return htmlPage('Not Found', '<p>This link has expired or is invalid.</p>');
+  const tokenAgeDays = (Date.now() - new Date(row.created_at).getTime()) / 86_400_000;
+  if (tokenAgeDays > 30) {
+    return htmlPage('Link Expired', '<p>This approval link has expired (older than 30 days). Ask the applicant to re-submit.</p>');
+  }
   if (row.status === 'approved') {
-    return htmlPage('Already Approved', `<p><strong>${row.name}</strong> is already a member.</p>`);
+    return htmlPage('Already Approved', `<p><strong>${escapeHtml(row.name)}</strong> is already a member.</p>`);
   }
 
   await env.DB.prepare(
@@ -191,7 +210,7 @@ async function handleApprove(url, env) {
     to: row.email,
     subject: 'Your membership has been approved!',
     html: `
-      <p>Hi <strong>${row.name}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(row.name)}</strong>,</p>
       <p>Your membership request has been approved. Welcome aboard!</p>
       <p>You will now receive newsletters and updates from us.</p>
     `,
@@ -199,7 +218,7 @@ async function handleApprove(url, env) {
 
   return htmlPage(
     'Approved ✓',
-    `<p><strong>${row.name}</strong> has been approved and notified by email.</p>`
+    `<p><strong>${escapeHtml(row.name)}</strong> has been approved and notified by email.</p>`
   );
 }
 
@@ -213,7 +232,7 @@ async function handleReject(url, env) {
 
   if (!row) return htmlPage('Not Found', '<p>This link has expired or is invalid.</p>');
   if (row.status === 'rejected') {
-    return htmlPage('Already Rejected', `<p><strong>${row.name}</strong> has already been rejected.</p>`);
+    return htmlPage('Already Rejected', `<p><strong>${escapeHtml(row.name)}</strong> has already been rejected.</p>`);
   }
 
   await env.DB.prepare(
@@ -222,15 +241,18 @@ async function handleReject(url, env) {
 
   return htmlPage(
     'Rejected',
-    `<p>Membership request from <strong>${row.name}</strong> has been rejected.</p>`
+    `<p>Membership request from <strong>${escapeHtml(row.name)}</strong> has been rejected.</p>`
   );
 }
 
 async function handleNewsletter(request, env) {
   const secret = request.headers.get('X-Newsletter-Secret') || '';
-  if (!await safeEqual(secret, env.NEWSLETTER_SECRET)) {
+  if (!env.NEWSLETTER_SECRET || !await safeEqual(secret, env.NEWSLETTER_SECRET)) {
     return new Response('Unauthorized', { status: 401 });
   }
+
+  const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+  if (contentLength > 512 * 1024) return new Response('Request body too large.', { status: 413 });
 
   let body;
   try {
@@ -247,14 +269,22 @@ async function handleNewsletter(request, env) {
     );
   }
 
+  const MAX_RECIPIENTS = parseInt(env.MAX_NEWSLETTER_RECIPIENTS || '500', 10);
   const { results } = await env.DB.prepare(
-    `SELECT name, email FROM members WHERE status = 'approved'`
-  ).all();
+    `SELECT name, email FROM members WHERE status = 'approved' LIMIT ?`
+  ).bind(MAX_RECIPIENTS + 1).all();
 
   if (!results.length) {
     return new Response(
       JSON.stringify({ sent: 0, total: 0 }),
       { headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (results.length > MAX_RECIPIENTS) {
+    return new Response(
+      JSON.stringify({ error: `Approved member count exceeds MAX_NEWSLETTER_RECIPIENTS (${MAX_RECIPIENTS}). Set a higher limit or use a queue-based approach for large lists.` }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
