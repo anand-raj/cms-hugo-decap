@@ -323,6 +323,146 @@ async function handleNewsletter(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// Admin helpers
+// ---------------------------------------------------------------------------
+
+async function requireAdminSecret(request, env) {
+  if (!env.NEWSLETTER_SECRET) return false;
+  const provided = request.headers.get('X-Admin-Secret') || '';
+  return safeEqual(provided, env.NEWSLETTER_SECRET);
+}
+
+// ---------------------------------------------------------------------------
+// GET /admin/members
+// ---------------------------------------------------------------------------
+
+async function handleAdminMembers(request, env) {
+  if (!await requireAdminSecret(request, env)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, name, email, status, created_at, approved_at
+     FROM members
+     ORDER BY created_at DESC`
+  ).all();
+
+  return new Response(JSON.stringify(results), {
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /admin/approve   body: { token }
+// POST /admin/reject    body: { token }
+// ---------------------------------------------------------------------------
+
+async function handleAdminApprove(request, env) {
+  if (!await requireAdminSecret(request, env)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  let body;
+  try { body = await request.json(); } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+  const token = String(body.token || '').trim();
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'token is required' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  const row = await env.DB.prepare(
+    `SELECT id, name, email, status, created_at FROM members WHERE token = ?`
+  ).bind(token).first();
+
+  if (!row) {
+    return new Response(JSON.stringify({ error: 'Member not found' }), {
+      status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  if (row.status === 'approved') {
+    return new Response(JSON.stringify({ ok: true, already: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  await env.DB.prepare(
+    `UPDATE members SET status = 'approved', approved_at = ? WHERE token = ?`
+  ).bind(new Date().toISOString(), token).run();
+
+  await sendEmail(env, {
+    to: row.email,
+    subject: 'Your membership has been approved!',
+    html: `
+      <p>Hi <strong>${escapeHtml(row.name)}</strong>,</p>
+      <p>Your membership request has been approved. Welcome aboard!</p>
+      <p>You will now receive newsletters and updates from us.</p>
+    `,
+  });
+
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  });
+}
+
+async function handleAdminReject(request, env) {
+  if (!await requireAdminSecret(request, env)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  let body;
+  try { body = await request.json(); } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+  const token = String(body.token || '').trim();
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'token is required' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  const row = await env.DB.prepare(
+    `SELECT id, name, status FROM members WHERE token = ?`
+  ).bind(token).first();
+
+  if (!row) {
+    return new Response(JSON.stringify({ error: 'Member not found' }), {
+      status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  if (row.status === 'rejected') {
+    return new Response(JSON.stringify({ ok: true, already: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    });
+  }
+
+  await env.DB.prepare(
+    `UPDATE members SET status = 'rejected' WHERE token = ?`
+  ).bind(token).run();
+
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -335,11 +475,14 @@ export default {
     }
 
     switch (`${request.method} ${url.pathname}`) {
-      case 'POST /subscribe':  return handleSubscribe(request, env);
-      case 'GET /approve':     return handleApprove(url, env);
-      case 'GET /reject':      return handleReject(url, env);
-      case 'POST /newsletter': return handleNewsletter(request, env);
-      default:                 return new Response('Not found', { status: 404 });
+      case 'POST /subscribe':       return handleSubscribe(request, env);
+      case 'GET /approve':          return handleApprove(url, env);
+      case 'GET /reject':           return handleReject(url, env);
+      case 'POST /newsletter':      return handleNewsletter(request, env);
+      case 'GET /admin/members':    return handleAdminMembers(request, env);
+      case 'POST /admin/approve':   return handleAdminApprove(request, env);
+      case 'POST /admin/reject':    return handleAdminReject(request, env);
+      default:                      return new Response('Not found', { status: 404 });
     }
   },
 };

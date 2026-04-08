@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Members Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── Auth screen ─────────────────────────────────────────── */
+    #auth-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .auth-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    }
+
+    .auth-card h1 {
+      margin: 0 0 1.5rem;
+      font-size: 1.3rem;
+      color: #1a1a2e;
+    }
+
+    .auth-card label {
+      display: block;
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: .4rem;
+      color: #555;
+    }
+
+    .auth-card input[type="password"] {
+      width: 100%;
+      padding: .6rem .8rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      outline: none;
+    }
+
+    .auth-card input[type="password"]:focus { border-color: #e94560; }
+
+    .auth-card .worker-row {
+      display: flex;
+      gap: .5rem;
+      align-items: flex-end;
+      margin-bottom: 1rem;
+    }
+
+    .auth-card .worker-row > div { flex: 1; }
+
+    .auth-card input[type="text"] {
+      width: 100%;
+      padding: .6rem .8rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: .9rem;
+      outline: none;
+    }
+
+    .auth-card input[type="text"]:focus { border-color: #e94560; }
+
+    .btn-primary {
+      width: 100%;
+      padding: .7rem;
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .btn-primary:hover { background: #e94560; }
+
+    .auth-error {
+      color: #e94560;
+      font-size: .85rem;
+      margin-top: .5rem;
+      min-height: 1.2em;
+    }
+
+    /* ── Main app ────────────────────────────────────────────── */
+    #app { display: none; }
+
+    .app-header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: .9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .app-header h1 { margin: 0; font-size: 1.1rem; }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.4);
+      color: #fff;
+      border-radius: 5px;
+      padding: .35rem .8rem;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+
+    .btn-logout:hover { background: rgba(255,255,255,.1); }
+
+    .app-body {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: .4rem;
+    }
+
+    .filter-tab {
+      padding: .35rem .9rem;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      background: #fff;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .filter-tab.active,
+    .filter-tab:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+    .search-box {
+      flex: 1;
+      min-width: 180px;
+      padding: .4rem .8rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: .9rem;
+      outline: none;
+    }
+
+    .search-box:focus { border-color: #1a1a2e; }
+
+    .btn-refresh {
+      padding: .4rem .9rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+
+    .btn-refresh:hover { background: #f0f0f0; }
+
+    /* ── Stats bar ────────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: .75rem 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      min-width: 110px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: .78rem;
+      color: #888;
+      margin-top: .2rem;
+    }
+
+    .stat-num.pending  { color: #d97706; }
+    .stat-num.approved { color: #16a34a; }
+    .stat-num.rejected { color: #dc2626; }
+
+    /* ── Table ────────────────────────────────────────────────── */
+    .table-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+
+    thead th {
+      padding: .75rem 1rem;
+      text-align: left;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #888;
+      border-bottom: 1px solid #eee;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    thead th:hover { color: #1a1a2e; }
+    thead th.sort-asc::after  { content: ' ↑'; }
+    thead th.sort-desc::after { content: ' ↓'; }
+
+    tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: background .1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+
+    td {
+      padding: .7rem 1rem;
+      vertical-align: middle;
+    }
+
+    .td-name { font-weight: 600; }
+
+    .td-email a {
+      color: #1a1a2e;
+      text-decoration: none;
+    }
+
+    .td-email a:hover { text-decoration: underline; }
+
+    .td-date {
+      color: #888;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+
+    /* ── Status badges ────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: .2rem .65rem;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+    /* ── Action buttons ───────────────────────────────────────── */
+    .td-actions { white-space: nowrap; }
+
+    .btn-action {
+      padding: .3rem .75rem;
+      border-radius: 5px;
+      border: none;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+
+    .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-approve {
+      background: #d1fae5;
+      color: #065f46;
+      margin-right: .3rem;
+    }
+
+    .btn-approve:hover:not(:disabled) { background: #6ee7b7; }
+
+    .btn-reject {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .btn-reject:hover:not(:disabled) { background: #fca5a5; }
+
+    /* ── Empty / loading states ───────────────────────────────── */
+    .state-row td {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #aaa;
+      font-size: .95rem;
+    }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1a1a2e;
+      color: #fff;
+      padding: .75rem 1.25rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.toast-error { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth Screen ─────────────────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>Members Admin</h1>
+    <div class="worker-row">
+      <div>
+        <label for="worker-url">Worker URL</label>
+        <input id="worker-url" type="text"
+               placeholder="https://cms-membership.xxx.workers.dev"
+               value="">
+      </div>
+    </div>
+    <label for="admin-secret">Admin Secret</label>
+    <input id="admin-secret" type="password" placeholder="Paste your NEWSLETTER_SECRET">
+    <button class="btn-primary" id="btn-login">Sign in</button>
+    <p class="auth-error" id="auth-error"></p>
+  </div>
+</div>
+
+<!-- ── App ────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="app-header">
+    <h1>Members Admin</h1>
+    <button class="btn-logout" id="btn-logout">Sign out</button>
+  </div>
+
+  <div class="app-body">
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">—</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num pending" id="stat-pending">—</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num approved" id="stat-approved">—</div>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num rejected" id="stat-rejected">—</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All</button>
+        <button class="filter-tab" data-filter="pending">Pending</button>
+        <button class="filter-tab" data-filter="approved">Approved</button>
+        <button class="filter-tab" data-filter="rejected">Rejected</button>
+      </div>
+      <input class="search-box" id="search-box" type="search" placeholder="Search name or email…">
+      <button class="btn-refresh" id="btn-refresh">↻ Refresh</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-col="name">Name</th>
+            <th data-col="email">Email</th>
+            <th data-col="status">Status</th>
+            <th data-col="created_at">Submitted</th>
+            <th data-col="approved_at">Approved</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="member-tbody">
+          <tr class="state-row"><td colspan="6">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p id="row-count" style="margin-top:.75rem;font-size:.82rem;color:#aaa;"></p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── State ────────────────────────────────────────────────────
+  let WORKER_URL = '';
+  let SECRET     = '';
+  let allMembers = [];
+  let filterStatus = 'all';
+  let searchQuery  = '';
+  let sortCol      = 'created_at';
+  let sortDir      = 'desc';
+
+  // ── Saved session ────────────────────────────────────────────
+  const saved = sessionStorage.getItem('members_admin');
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      document.getElementById('worker-url').value = s.workerUrl || '';
+      SECRET     = s.secret || '';
+      WORKER_URL = s.workerUrl || '';
+    } catch {}
+  }
+
+  // ── Auth ─────────────────────────────────────────────────────
+  document.getElementById('btn-login').addEventListener('click', login);
+  document.getElementById('admin-secret').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') login();
+  });
+
+  async function login() {
+    const url    = document.getElementById('worker-url').value.trim().replace(/\/$/, '');
+    const secret = document.getElementById('admin-secret').value.trim();
+    const errEl  = document.getElementById('auth-error');
+    errEl.textContent = '';
+
+    if (!url)    { errEl.textContent = 'Worker URL is required.'; return; }
+    if (!secret) { errEl.textContent = 'Admin secret is required.'; return; }
+
+    document.getElementById('btn-login').disabled    = true;
+    document.getElementById('btn-login').textContent = 'Verifying…';
+
+    try {
+      const res = await fetch(`${url}/admin/members`, {
+        headers: { 'X-Admin-Secret': secret },
+      });
+      if (res.status === 401) {
+        errEl.textContent = 'Wrong secret.';
+        return;
+      }
+      if (!res.ok) {
+        errEl.textContent = `Worker error: ${res.status}`;
+        return;
+      }
+      WORKER_URL = url;
+      SECRET     = secret;
+      sessionStorage.setItem('members_admin', JSON.stringify({ workerUrl: url, secret }));
+      allMembers = await res.json();
+      showApp();
+    } catch (e) {
+      errEl.textContent = `Could not reach worker: ${e.message}`;
+    } finally {
+      document.getElementById('btn-login').disabled    = false;
+      document.getElementById('btn-login').textContent = 'Sign in';
+    }
+  }
+
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    render();
+  }
+
+  document.getElementById('btn-logout').addEventListener('click', function () {
+    sessionStorage.removeItem('members_admin');
+    location.reload();
+  });
+
+  // ── Data fetch ───────────────────────────────────────────────
+  async function fetchMembers() {
+    const res = await fetch(`${WORKER_URL}/admin/members`, {
+      headers: { 'X-Admin-Secret': SECRET },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  document.getElementById('btn-refresh').addEventListener('click', async function () {
+    this.textContent = '↻ Loading…';
+    this.disabled = true;
+    try {
+      allMembers = await fetchMembers();
+      render();
+      toast('Refreshed');
+    } catch (e) {
+      toast('Refresh failed: ' + e.message, true);
+    } finally {
+      this.textContent = '↻ Refresh';
+      this.disabled = false;
+    }
+  });
+
+  // ── Filter / search / sort ───────────────────────────────────
+  document.getElementById('filter-tabs').addEventListener('click', function (e) {
+    if (!e.target.matches('.filter-tab')) return;
+    filterStatus = e.target.dataset.filter;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    e.target.classList.add('active');
+    render();
+  });
+
+  document.getElementById('search-box').addEventListener('input', function () {
+    searchQuery = this.value.toLowerCase();
+    render();
+  });
+
+  document.querySelector('thead').addEventListener('click', function (e) {
+    const col = e.target.dataset.col;
+    if (!col) return;
+    if (sortCol === col) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortCol = col;
+      sortDir = 'asc';
+    }
+    document.querySelectorAll('thead th').forEach(function (th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+    });
+    e.target.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    render();
+  });
+
+  // ── Render ───────────────────────────────────────────────────
+  function render() {
+    // Stats
+    document.getElementById('stat-total').textContent    = allMembers.length;
+    document.getElementById('stat-pending').textContent  = allMembers.filter(m => m.status === 'pending').length;
+    document.getElementById('stat-approved').textContent = allMembers.filter(m => m.status === 'approved').length;
+    document.getElementById('stat-rejected').textContent = allMembers.filter(m => m.status === 'rejected').length;
+
+    // Filter + search
+    let list = allMembers;
+    if (filterStatus !== 'all') list = list.filter(m => m.status === filterStatus);
+    if (searchQuery) {
+      list = list.filter(m =>
+        m.name.toLowerCase().includes(searchQuery) ||
+        m.email.toLowerCase().includes(searchQuery)
+      );
+    }
+
+    // Sort
+    list = [...list].sort(function (a, b) {
+      const va = (a[sortCol] || '').toLowerCase();
+      const vb = (b[sortCol] || '').toLowerCase();
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+
+    const tbody = document.getElementById('member-tbody');
+    document.getElementById('row-count').textContent =
+      `Showing ${list.length} of ${allMembers.length} member${allMembers.length !== 1 ? 's' : ''}`;
+
+    if (!list.length) {
+      tbody.innerHTML = '<tr class="state-row"><td colspan="6">No members found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function (m) {
+      const isPending  = m.status === 'pending';
+      const isApproved = m.status === 'approved';
+      return `
+        <tr data-token="${esc(m.token || '')}">
+          <td class="td-name">${esc(m.name)}</td>
+          <td class="td-email"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></td>
+          <td><span class="badge badge-${esc(m.status)}">${esc(m.status)}</span></td>
+          <td class="td-date">${fmtDate(m.created_at)}</td>
+          <td class="td-date">${m.approved_at ? fmtDate(m.approved_at) : '—'}</td>
+          <td class="td-actions">
+            <button class="btn-action btn-approve"
+              ${isApproved ? 'disabled' : ''}
+              onclick="window._adminApprove(this, '${esc(m.token || '')}')">
+              ✓ Approve
+            </button>
+            <button class="btn-action btn-reject"
+              ${m.status === 'rejected' ? 'disabled' : ''}
+              onclick="window._adminReject(this, '${esc(m.token || '')}')">
+              ✗ Reject
+            </button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ── Actions ──────────────────────────────────────────────────
+  window._adminApprove = async function (btn, token) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(`${WORKER_URL}/admin/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': SECRET },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      // Update local state
+      const m = allMembers.find(m => m.token === token);
+      if (m) { m.status = 'approved'; m.approved_at = new Date().toISOString(); }
+      render();
+      toast('Member approved and notified.');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '✓ Approve';
+      toast('Error: ' + e.message, true);
+    }
+  };
+
+  window._adminReject = async function (btn, token) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(`${WORKER_URL}/admin/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': SECRET },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const m = allMembers.find(m => m.token === token);
+      if (m) { m.status = 'rejected'; }
+      render();
+      toast('Member rejected.');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '✗ Reject';
+      toast('Error: ' + e.message, true);
+    }
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch { return iso; }
+  }
+
+  let toastTimer;
+  function toast(msg, isError) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show' + (isError ? ' toast-error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.className = ''; }, 3000);
+  }
+
+  // ── Auto-login if session exists ─────────────────────────────
+  if (SECRET && WORKER_URL) {
+    login();
+  }
+
+}());
+</script>
+</body>
+</html>
