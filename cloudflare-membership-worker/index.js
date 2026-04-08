@@ -5,6 +5,9 @@
 //   GET  /approve?token=  — Admin link: approve a pending member
 //   GET  /reject?token=   — Admin link: reject a pending member
 //   POST /newsletter      — Requires X-Newsletter-Secret header: send to approved members
+//   GET  /admin/members   — Admin: list all members (GitHub OAuth)
+//   POST /admin/approve   — Admin: approve a member by id (GitHub OAuth)
+//   POST /admin/reject    — Admin: reject a member by id (GitHub OAuth)
 //
 // Required environment variables (set in Cloudflare dashboard):
 //   RESEND_API_KEY       (encrypted) Resend API key
@@ -13,6 +16,7 @@
 //   SITE_URL             (plain)     Your site origin for CORS, e.g. https://anand-raj.github.io
 //   WORKER_URL           (plain)     This worker's URL, e.g. https://cms-membership.xxx.workers.dev
 //   NEWSLETTER_SECRET    (encrypted) Secret header value for /newsletter
+//   GITHUB_REPO          (plain)     Repo for admin auth, e.g. anand-raj/cms-hugo-decap
 //
 // D1 database binding: DB
 
@@ -326,10 +330,39 @@ async function handleNewsletter(request, env) {
 // Admin helpers
 // ---------------------------------------------------------------------------
 
-async function requireAdminSecret(request, env) {
-  if (!env.NEWSLETTER_SECRET) return false;
-  const provided = request.headers.get('X-Admin-Secret') || '';
-  return safeEqual(provided, env.NEWSLETTER_SECRET);
+async function validateGitHubToken(token, env) {
+  if (!env.GITHUB_REPO) return false;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}`, {
+      headers: {
+        Authorization: `token ${token}`,
+        'User-Agent': 'cms-membership-worker',
+        Accept: 'application/vnd.github+json',
+      },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!(data.permissions && (data.permissions.push || data.permissions.admin));
+  } catch {
+    return false;
+  }
+}
+
+async function requireAdmin(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  if (authHeader.startsWith('token ') || authHeader.startsWith('Bearer ')) {
+    const ghToken = authHeader.replace(/^(token|Bearer)\s+/, '');
+    return validateGitHubToken(ghToken, env);
+  }
+  return false;
+}
+
+function adminCorsHeaders(env) {
+  return {
+    'Access-Control-Allow-Origin': env.SITE_URL,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -337,10 +370,10 @@ async function requireAdminSecret(request, env) {
 // ---------------------------------------------------------------------------
 
 async function handleAdminMembers(request, env) {
-  if (!await requireAdminSecret(request, env)) {
+  if (!await requireAdmin(request, env)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
@@ -351,55 +384,55 @@ async function handleAdminMembers(request, env) {
   ).all();
 
   return new Response(JSON.stringify(results), {
-    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
   });
 }
 
 // ---------------------------------------------------------------------------
-// POST /admin/approve   body: { token }
-// POST /admin/reject    body: { token }
+// POST /admin/approve   body: { id }
+// POST /admin/reject    body: { id }
 // ---------------------------------------------------------------------------
 
 async function handleAdminApprove(request, env) {
-  if (!await requireAdminSecret(request, env)) {
+  if (!await requireAdmin(request, env)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   let body;
   try { body = await request.json(); } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      status: 400, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
-  const token = String(body.token || '').trim();
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'token is required' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  const id = parseInt(body.id, 10);
+  if (!id) {
+    return new Response(JSON.stringify({ error: 'id is required' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   const row = await env.DB.prepare(
-    `SELECT id, name, email, status, created_at FROM members WHERE token = ?`
-  ).bind(token).first();
+    `SELECT id, name, email, status FROM members WHERE id = ?`
+  ).bind(id).first();
 
   if (!row) {
     return new Response(JSON.stringify({ error: 'Member not found' }), {
-      status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      status: 404, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   if (row.status === 'approved') {
     return new Response(JSON.stringify({ ok: true, already: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   await env.DB.prepare(
-    `UPDATE members SET status = 'approved', approved_at = ? WHERE token = ?`
-  ).bind(new Date().toISOString(), token).run();
+    `UPDATE members SET status = 'approved', approved_at = ? WHERE id = ?`
+  ).bind(new Date().toISOString(), id).run();
 
   await sendEmail(env, {
     to: row.email,
@@ -412,53 +445,53 @@ async function handleAdminApprove(request, env) {
   });
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
   });
 }
 
 async function handleAdminReject(request, env) {
-  if (!await requireAdminSecret(request, env)) {
+  if (!await requireAdmin(request, env)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   let body;
   try { body = await request.json(); } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      status: 400, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
-  const token = String(body.token || '').trim();
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'token is required' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+  const id = parseInt(body.id, 10);
+  if (!id) {
+    return new Response(JSON.stringify({ error: 'id is required' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   const row = await env.DB.prepare(
-    `SELECT id, name, status FROM members WHERE token = ?`
-  ).bind(token).first();
+    `SELECT id, name, status FROM members WHERE id = ?`
+  ).bind(id).first();
 
   if (!row) {
     return new Response(JSON.stringify({ error: 'Member not found' }), {
-      status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      status: 404, headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   if (row.status === 'rejected') {
     return new Response(JSON.stringify({ ok: true, already: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+      headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
     });
   }
 
   await env.DB.prepare(
-    `UPDATE members SET status = 'rejected' WHERE token = ?`
-  ).bind(token).run();
+    `UPDATE members SET status = 'rejected' WHERE id = ?`
+  ).bind(id).run();
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json', ...corsHeaders(env) },
+    headers: { 'Content-Type': 'application/json', ...adminCorsHeaders(env) },
   });
 }
 
@@ -471,7 +504,11 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(env) });
+      const isAdmin = url.pathname.startsWith('/admin/');
+      return new Response(null, {
+        status: 204,
+        headers: isAdmin ? adminCorsHeaders(env) : corsHeaders(env),
+      });
     }
 
     switch (`${request.method} ${url.pathname}`) {
