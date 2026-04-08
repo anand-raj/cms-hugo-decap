@@ -15,8 +15,8 @@
 //   FROM_EMAIL           (plain)     Sender address — use "onboarding@resend.dev" for sandbox
 //   SITE_URL             (plain)     Your site origin for CORS, e.g. https://anand-raj.github.io
 //   WORKER_URL           (plain)     This worker's URL, e.g. https://cms-membership.xxx.workers.dev
-//   NEWSLETTER_SECRET    (encrypted) Secret header value for /newsletter
 //   GITHUB_REPO          (plain)     Repo for admin auth, e.g. anand-raj/cms-hugo-decap
+//   NEWSLETTER_SECRET    (encrypted) Fallback secret for automated newsletter sends (curl/CI)
 //
 // D1 database binding: DB
 
@@ -250,8 +250,18 @@ async function handleReject(url, env) {
 }
 
 async function handleNewsletter(request, env) {
-  const secret = request.headers.get('X-Newsletter-Secret') || '';
-  if (!env.NEWSLETTER_SECRET || !await safeEqual(secret, env.NEWSLETTER_SECRET)) {
+  // Accept either a GitHub collaborator token (browser/admin UI) or the
+  // static NEWSLETTER_SECRET (for automated curl/CI sends).
+  const authHeader = request.headers.get('Authorization') || '';
+  const secretHeader = request.headers.get('X-Newsletter-Secret') || '';
+  const isGitHub = authHeader.startsWith('token ') || authHeader.startsWith('Bearer ');
+  const isSecret = !isGitHub && env.NEWSLETTER_SECRET &&
+    await safeEqual(secretHeader, env.NEWSLETTER_SECRET);
+
+  if (!isGitHub && !isSecret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  if (isGitHub && !await requireAdmin(request, env)) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -331,20 +341,56 @@ async function handleNewsletter(request, env) {
 // ---------------------------------------------------------------------------
 
 async function validateGitHubToken(token, env) {
-  if (!env.GITHUB_REPO) return false;
+  if (!env.GITHUB_REPO) {
+    console.error('GITHUB_REPO env var is not set');
+    return false;
+  }
+
+  // Check cache first (keyed on SHA-256 of token, TTL 5 min)
+  const enc = new TextEncoder();
+  const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(token));
+  const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const cacheKey = new Request(`https://internal-gh-auth-cache/${hashHex}`);
+  const cache    = caches.default;
+  const cached   = await cache.match(cacheKey);
+  if (cached) return (await cached.text()) === 'true';
+
+  async function storeResult(valid) {
+    // Cache for 5 minutes regardless of outcome (rate-limit protection)
+    await cache.put(cacheKey, new Response(String(valid), {
+      headers: { 'Cache-Control': 'public, max-age=300' },
+    }));
+    return valid;
+  }
+
   try {
-    const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}`, {
+    // Step 1: resolve the authenticated user's login
+    const userRes = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: `token ${token}`,
         'User-Agent': 'cms-membership-worker',
         Accept: 'application/vnd.github+json',
       },
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return !!(data.permissions && (data.permissions.push || data.permissions.admin));
+    if (!userRes.ok) return storeResult(false);
+    const { login } = await userRes.json();
+    if (!login) return storeResult(false);
+
+    // Step 2: verify they are a repository collaborator
+    const collabRes = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_REPO}/collaborators/${encodeURIComponent(login)}`,
+      {
+        headers: {
+          Authorization: `token ${token}`,
+          'User-Agent': 'cms-membership-worker',
+          Accept: 'application/vnd.github+json',
+        },
+      }
+    );
+    // 204 = is a collaborator, 404 = not a collaborator
+    return storeResult(collabRes.status === 204);
   } catch {
-    return false;
+    return false; // network error — do not cache
   }
 }
 
