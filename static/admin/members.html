@@ -430,7 +430,7 @@
     btn.textContent = 'Opening GitHub…';
 
     const popup = window.open(
-      `${CONFIG.oauthUrl}/auth`,
+      `${CONFIG.oauthUrl}/auth?provider=github&site_id=${encodeURIComponent(location.hostname)}`,
       'github-oauth',
       'width=600,height=700,left=' + Math.round((screen.width - 600) / 2) +
       ',top=' + Math.round((screen.height - 700) / 2)
@@ -447,6 +447,14 @@
     function handleMessage(e) {
       if (e.origin !== oauthOrigin) return;
       if (typeof e.data !== 'string') return;
+
+      // Step 1: popup announces it's ready — reply so it sends the token
+      if (e.data === 'authorizing:github') {
+        e.source.postMessage('authorizing:github', e.origin);
+        return;
+      }
+
+      // Step 2: popup sends the token
       const prefix = 'authorization:github:success:';
       if (!e.data.startsWith(prefix)) return;
       window.removeEventListener('message', handleMessage);
